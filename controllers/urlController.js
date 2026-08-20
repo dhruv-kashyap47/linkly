@@ -28,6 +28,6 @@ const shortenUrl = async(req,res) => {
     }
 };
 
-module.exports = shortenUrl;
+module.exports = { shortenUrl };
 
 
