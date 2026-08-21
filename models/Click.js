@@ -1,7 +1,6 @@
-const { default: mongoose } = require('mongoose');
 const mongoose = require('mongoose');
 
-const clickSchema = new mongoose.schema({
+const clickSchema = new mongoose.Schema({
     url: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Url',
