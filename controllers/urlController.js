@@ -10,7 +10,6 @@ const shortenUrl = async(req,res) => {
             return res.status(400).json({ error: `originalUrl is require` });
         }
 
-
         const shortCode = generateShortCode()
 
         const newUrl = await Url.create({
@@ -36,7 +35,7 @@ const getUrlStats = async(req, res) => {
         const url = await Url.findOne({ shortCode: code });
 
         if (!url){
-            return res.status(404).json({ error : "Short Url not found"})
+            return res.status(404).json({ error : `Short Url not found`})
         }
 
         res.json({
@@ -46,7 +45,7 @@ const getUrlStats = async(req, res) => {
             createdAt: url.createdAt
         });
     } catch(error){
-        res.status(500).json({error : "Something went wrong!"})
+        res.status(500).json({error : `Oops,Something went wrong!`})
     }
 }
 
