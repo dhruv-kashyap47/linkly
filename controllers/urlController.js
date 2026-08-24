@@ -84,8 +84,40 @@ const getClicksByDay = async(req, res) => {
     }
 };
 
+const getClicksByReferrer = async (req, res) => {
+    try {
+        const { code } = req.params;
 
-module.exports = { shortenUrl, getUrlStats, getClicksByDay };
+        const url = await Url.findOne({ shortCode : code });
+
+        if(!url){
+            return res.status(404).json({ error: ` Short URL not found`})
+        }
+
+        const clicksByReferrer = await Click.aggregate([
+            {
+                $match : { url : url._id}
+            },
+
+            {
+                $group: {
+                    _id : '$referrer',
+                    count: { $sum: 1 }
+                }
+            },
+
+            {
+                $sort: { count: -1 }
+            },
+        ]);
+        res.json({ shortCode: url.shortCode, clicksByReferrer})
+    } catch (error) {
+        res.status(500).json({ error: ` Something went wrong `})
+    }
+};
+
+
+module.exports = { shortenUrl, getUrlStats, getClicksByDay, getClicksByReferrer};
 
 
 
