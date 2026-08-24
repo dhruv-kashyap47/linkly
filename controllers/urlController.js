@@ -30,7 +30,7 @@ const shortenUrl = async(req,res) => {
 
 const getUrlStats = async(req, res) => {
     try{
-        const { code } = req.param;
+        const { code } = req.params;
 
         const url = await Url.findOne({ shortCode: code });
 
@@ -45,12 +45,47 @@ const getUrlStats = async(req, res) => {
             createdAt: url.createdAt
         });
     } catch(error){
-        res.status(500).json({error : `Oops,Something went wrong!`})
+        res.status(500).json({ error : `Oops,Something went wrong!` })
     }
-}
+};
+
+const getClicksByDay = async(req, res) => {
+    try {
+        const { code } = req.params;
+
+        const url = await Url.findOne({ shortCode : code });
+
+        if (!url){
+            return res.status(404).json({ error : `Short Url not found`});
+        }
+
+        const clicksByDay = await Click.aggregate([
+            {
+                $match: { url: url._id}
+            },
+
+            {
+                $group: {
+                    _id: {
+                        $dateToString: { format: '%Y-%m-%d', date: '$timestamp'}
+                    },
+                    count: { $sum: 1}
+                }
+            },
+
+            {
+                $sort: {_id: 1}
+            }
+        ]);
+
+        res.json({ shortCode: url.shortCode, clicksByDay})
+    } catch (error){
+        res.status(500).json({ error: `Something went wrong` });
+    }
+};
 
 
-module.exports = { shortenUrl, getUrlStats };
+module.exports = { shortenUrl, getUrlStats, getClicksByDay };
 
 
 
