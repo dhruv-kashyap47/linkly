@@ -1,8 +1,9 @@
 const Click = require('../models/Click.js');
 const Url = require('../models/Url.js');
 const generateShortCode = require('../utils/generateShortCode.js');
+const AppError = require('../utils/AppError.js');
 
-const shortenUrl = async(req,res) => {
+const shortenUrl = async(req,res,next) => {
     try {
         const { originalUrl } = req.body;
 
@@ -24,11 +25,11 @@ const shortenUrl = async(req,res) => {
         });
 
     } catch(error){
-        res.status(500).json({ error: `Something went wrong` })
+        next(error);
     }
 };
 
-const getUrlStats = async(req, res) => {
+const getUrlStats = async(req, res, next) => {
     try{
         const { code } = req.params;
 
@@ -45,11 +46,11 @@ const getUrlStats = async(req, res) => {
             createdAt: url.createdAt
         });
     } catch(error){
-        res.status(500).json({ error : `Oops,Something went wrong!` })
+        next(error);
     }
 };
 
-const getClicksByDay = async(req, res) => {
+const getClicksByDay = async(req, res, next) => {
     try {
         const { code } = req.params;
 
@@ -80,11 +81,11 @@ const getClicksByDay = async(req, res) => {
 
         res.json({ shortCode: url.shortCode, clicksByDay})
     } catch (error){
-        res.status(500).json({ error: `Something went wrong` });
+        next(error);
     }
 };
 
-const getClicksByReferrer = async (req, res) => {
+const getClicksByReferrer = async (req, res, next) => {
     try {
         const { code } = req.params;
 
@@ -112,7 +113,7 @@ const getClicksByReferrer = async (req, res) => {
         ]);
         res.json({ shortCode: url.shortCode, clicksByReferrer})
     } catch (error) {
-        res.status(500).json({ error: ` Something went wrong `})
+        next(error);
     }
 };
 
