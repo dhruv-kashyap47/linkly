@@ -5,18 +5,20 @@ const AppError = require('../utils/AppError.js');
 
 const shortenUrl = async(req,res,next) => {
     try {
-        const { originalUrl } = req.body;
+        const { originalUrl, customAlias } = req.body;
 
-        if(!originalUrl){
-            return res.status(400).json({ error: `originalUrl is require` });
+        let shortCode = customAlias;
+
+        if(customAlias){
+            const existing = await Url.findOne({ shortCode: customAlias });
+            if(existing){
+                return next(new AppError(`This alias is alreday taken`, 409));
+            }
+        } else{
+            shortCode = generateShortCode();
         }
 
-        const shortCode = generateShortCode()
-
-        const newUrl = await Url.create({
-        originalUrl,
-        shortCode
-        })
+        const newUrl = await Url.create({ originalUrl, shortCode });
 
         res.status(201).json({
         originalUrl: newUrl.originalUrl,
