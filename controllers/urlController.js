@@ -18,7 +18,7 @@ const shortenUrl = async(req,res,next) => {
             shortCode = generateShortCode();
         }
 
-        const newUrl = await Url.create({ originalUrl, shortCode });
+        const newUrl = await Url.create({ originalUrl, shortCode, user: req.userId });
 
         res.status(201).json({
         originalUrl: newUrl.originalUrl,
@@ -119,8 +119,17 @@ const getClicksByReferrer = async (req, res, next) => {
     }
 };
 
+const getMyUrls = async (req, res, next) => {
+  try {
+    const urls = await Url.find({ user: req.userId }).sort({ createdAt: -1 });
+    res.json({ count: urls.length, urls });
+  } catch (error) {
+    next(error);
+  }
+};
 
-module.exports = { shortenUrl, getUrlStats, getClicksByDay, getClicksByReferrer};
+
+module.exports = { shortenUrl, getUrlStats, getClicksByDay, getClicksByReferrer, getMyUrls};
 
 
 
