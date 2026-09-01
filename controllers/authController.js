@@ -38,5 +38,36 @@ const register = async (req, res, next) => {
     }
 };
 
+const login = async (req, res, next) => {
+    try {
+        const { email, password } = req.body
 
+        const findUser = await User.findOne({ email })
+
+        if(!findUser) {
+            return next(
+                new AppError(`Invalid email or password`, 401)
+            )
+        }
+
+        const passwordMatch = await findUser.comparePassword(password)
+
+        if(!passwordMatch) {
+            return next(
+                new AppError(`Invalid email or password` , 401)
+            )
+        }
+
+        const userToken = generateToken(findUser._id)
+
+        res.json({
+            user: { id: findUser._id, email: findUser.email },
+            userToken
+        })
+    } catch (error) {
+        next (error)
+    }
+};
+
+module.exports = { register, login };
 
