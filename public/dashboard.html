@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linkly — Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-inner">
+      <a href="/" class="logo">Linkly<span class="logo-dot">.</span></a>
+      <nav id="user-links" class="nav-links">
+        <span id="user-email-display" class="nav-email"></span>
+        <a href="/" id="logout-btn" class="nav-link">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <div class="dashboard-header animate-slide-up">
+      <div>
+        <h2>Your Links</h2>
+        <p class="dash-sub">Manage, track, and share your shortened URLs.</p>
+      </div>
+      <button class="btn-primary" id="new-link-btn">+ New Link</button>
+    </div>
+
+    <div id="dashboard-error" class="inline-error hidden animate-fade-in" role="alert"></div>
+
+    <!-- Stats summary bar -->
+    <div class="stats-summary animate-fade-in delay-100 hidden" id="stats-summary">
+      <div class="stat-pill">
+        <span class="stat-pill-label">Total Links</span>
+        <span class="stat-pill-value" id="total-links">0</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-label">Total Clicks</span>
+        <span class="stat-pill-value" id="total-clicks">0</span>
+      </div>
+    </div>
+
+    <!-- Links table -->
+    <div class="table-card animate-slide-up delay-200" id="table-card">
+      <div class="table-wrapper">
+        <table id="links-table">
+          <thead>
+            <tr>
+              <th>Short Link</th>
+              <th>Destination</th>
+              <th>Clicks</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="links-body">
+            <tr class="skeleton-row">
+              <td colspan="5">
+                <div class="empty-state">
+                  <div class="empty-icon">⟳</div>
+                  <p>Loading your links…</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- New Link Modal -->
+  <div id="new-link-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="new-link-title">
+    <div class="modal">
+      <button class="modal-close" id="close-new-link" aria-label="Close">&times;</button>
+      <h2 id="new-link-title">Shorten a URL</h2>
+      <p class="modal-sub">Enter the long URL you want to shorten and track.</p>
+      <div id="new-link-error" class="inline-error hidden" role="alert"></div>
+      <form id="new-link-form" novalidate>
+        <div class="form-group">
+          <label for="new-original-url">Long URL</label>
+          <input type="url" id="new-original-url" required placeholder="https://example.com/very/long/path" autocomplete="off">
+        </div>
+        <button type="submit" class="btn-primary full-width" id="new-link-submit">Shorten</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stats Modal -->
+  <div id="stats-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+    <div class="modal modal-wide">
+      <button class="modal-close" id="close-stats" aria-label="Close">&times;</button>
+      <h2 id="stats-title">Analytics</h2>
+      <p id="stats-code-display" class="stats-code-label"></p>
+
+      <div id="stats-error" class="inline-error hidden" role="alert"></div>
+
+      <div class="stats-hero-row" id="stats-hero-row">
+        <div class="stats-hero-pill">
+          <div class="stats-hero-num" id="stats-total-clicks">—</div>
+          <div class="stats-hero-label">Total Clicks</div>
+        </div>
+        <div class="stats-hero-pill">
+          <div class="stats-hero-num" id="stats-created">—</div>
+          <div class="stats-hero-label">Created</div>
+        </div>
+      </div>
+
+      <div class="stats-charts">
+        <div class="stats-chart-section">
+          <h3>Clicks by Day</h3>
+          <div id="chart-by-day" class="chart-container">
+            <div class="chart-loading">Loading…</div>
+          </div>
+        </div>
+        <div class="stats-chart-section">
+          <h3>Top Referrers</h3>
+          <div id="chart-by-referrer" class="chart-container">
+            <div class="chart-loading">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script>
+    /* ── Auth guard ── */
+    if (!localStorage.getItem('token')) {
+      showToast('Please log in first.', 'error');
+      setTimeout(() => { window.location.href = '/'; }, 700);
+    }
+
+    /* ── Show user email in nav ── */
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      try {
+        const u = JSON.parse(stored);
+        const el = document.getElementById('user-email-display');
+        if (el && u.email) el.textContent = u.email;
+      } catch(e) {}
+    }
+
+    /* ── Load links ── */
+    async function loadLinks() {
+      const tbody = document.getElementById('links-body');
+      try {
+        const data = await api.urls.getMyLinks();
+
+        // Update summary bar
+        const totalClicks = data.urls.reduce((sum, u) => sum + (u.clicks || 0), 0);
+        document.getElementById('total-links').textContent  = data.count;
+        document.getElementById('total-clicks').textContent = totalClicks;
+        document.getElementById('stats-summary').classList.remove('hidden');
+
+        if (data.urls.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5">
+                <div class="empty-state">
+                  <div class="empty-icon">🔗</div>
+                  <p>You haven't shortened any links yet.</p>
+                  <button class="btn-primary" onclick="openNewLinkModal()">Create your first link</button>
+                </div>
+              </td>
+            </tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.urls.map((url, i) => {
+          const shortUrl = `${location.origin}/${url.shortCode}`;
+          const created  = new Date(url.createdAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+          return `
+            <tr class="animate-fade-in" style="animation-delay:${i * 60}ms">
+              <td>
+                <a href="${shortUrl}" target="_blank" rel="noopener" class="short-code-link">
+                  ${url.shortCode}
+                </a>
+              </td>
+              <td class="dest-cell">
+                <span class="dest-text" title="${url.originalUrl}">${url.originalUrl}</span>
+              </td>
+              <td><span class="click-badge">${url.clicks}</span></td>
+              <td class="date-cell">${created}</td>
+              <td class="action-cell">
+                <button class="btn-sm btn-copy-row" data-url="${shortUrl}" aria-label="Copy short URL">Copy</button>
+                <button class="btn-sm btn-stats" data-code="${url.shortCode}" aria-label="View stats">Stats ↗</button>
+              </td>
+            </tr>`;
+        }).join('');
+
+        // Wire up buttons
+        tbody.querySelectorAll('.btn-copy-row').forEach(btn => {
+          btn.addEventListener('click', () => {
+            navigator.clipboard.writeText(btn.dataset.url);
+            btn.textContent = '✓';
+            showToast('Copied!', 'info');
+            setTimeout(() => btn.textContent = 'Copy', 1800);
+          });
+        });
+        tbody.querySelectorAll('.btn-stats').forEach(btn => {
+          btn.addEventListener('click', () => openStats(btn.dataset.code));
+        });
+
+      } catch (err) {
+        showError('dashboard-error', 'Could not load links: ' + err.message);
+      }
+    }
+
+    /* ── New link modal ── */
+    const newLinkModal = document.getElementById('new-link-modal');
+    function openNewLinkModal() { newLinkModal.classList.remove('hidden'); }
+    document.getElementById('new-link-btn').addEventListener('click', openNewLinkModal);
+    document.getElementById('close-new-link').addEventListener('click', () => newLinkModal.classList.add('hidden'));
+    newLinkModal.addEventListener('click', e => { if (e.target === newLinkModal) newLinkModal.classList.add('hidden'); });
+
+    document.getElementById('new-link-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      hideError('new-link-error');
+      const btn = document.getElementById('new-link-submit');
+      btn.disabled = true; btn.textContent = 'Shortening…';
+      try {
+        await api.urls.shorten(document.getElementById('new-original-url').value);
+        newLinkModal.classList.add('hidden');
+        document.getElementById('new-original-url').value = '';
+        showToast('Link shortened!', 'success');
+        await loadLinks();
+      } catch (err) {
+        showError('new-link-error', err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Shorten';
+      }
+    });
+
+    /* ── Stats modal ── */
+    const statsModal = document.getElementById('stats-modal');
+    document.getElementById('close-stats').addEventListener('click', () => statsModal.classList.add('hidden'));
+    statsModal.addEventListener('click', e => { if (e.target === statsModal) statsModal.classList.add('hidden'); });
+
+    function renderChart(containerId, rows, labelKey, valueKey, color) {
+      const el = document.getElementById(containerId);
+      if (!rows || rows.length === 0) {
+        el.innerHTML = '<div class="chart-empty">No data yet. Share your link to start collecting stats!</div>';
+        return;
+      }
+      const max = Math.max(...rows.map(r => r[valueKey]));
+      el.innerHTML = rows.map((r, i) => {
+        const pct = max > 0 ? (r[valueKey] / max * 100).toFixed(1) : 0;
+        const label = (r[labelKey] === null || r[labelKey] === undefined || r[labelKey] === '') ? 'Direct' : r[labelKey];
+        return `
+          <div class="chart-row animate-fade-in" style="animation-delay:${i*50}ms">
+            <div class="chart-label" title="${label}">${label}</div>
+            <div class="chart-bar-wrap">
+              <div class="chart-bar" style="width:0" data-w="${pct}%"></div>
+            </div>
+            <div class="chart-val">${r[valueKey]}</div>
+          </div>`;
+      }).join('');
+
+      // Animate bars in next frame
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        el.querySelectorAll('.chart-bar').forEach(b => { b.style.width = b.dataset.w; });
+      }));
+    }
+
+    async function openStats(code) {
+      hideError('stats-error');
+      document.getElementById('stats-code-display').textContent = `${location.origin}/${code}`;
+      document.getElementById('stats-total-clicks').textContent = '—';
+      document.getElementById('stats-created').textContent      = '—';
+      document.getElementById('chart-by-day').innerHTML         = '<div class="chart-loading">Loading…</div>';
+      document.getElementById('chart-by-referrer').innerHTML    = '<div class="chart-loading">Loading…</div>';
+      statsModal.classList.remove('hidden');
+
+      try {
+        const [stats, dayData, refData] = await Promise.all([
+          api.urls.getStats(code),
+          api.urls.getClicksByDay(code),
+          api.urls.getClicksByReferrer(code)
+        ]);
+
+        document.getElementById('stats-total-clicks').textContent =
+          stats.totalClicks.toLocaleString();
+        document.getElementById('stats-created').textContent =
+          new Date(stats.createdAt).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+
+        renderChart('chart-by-day',      dayData.clicksByDay,      '_id', 'count', '#8b5cf6');
+        renderChart('chart-by-referrer', refData.clicksByReferrer, '_id', 'count', '#06b6d4');
+      } catch (err) {
+        showError('stats-error', 'Failed to load analytics: ' + err.message);
+      }
+    }
+
+    loadLinks();
+  </script>
+</body>
+</html>

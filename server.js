@@ -13,9 +13,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send("Linkly is alive!");
-});
+app.use(express.static("public"));
 
 // API routes
 app.use("/api", urlRoutes);
